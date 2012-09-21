@@ -22,5 +22,5 @@ const int BSON_MINIMUM           = 0xFF;
 const int BSON_MAXIMUM           = 0x7F;
 
 extern void bson_register_handler( int type, void *func );
-extern void bson_decode( char *buf, int length );
+extern void bson_decode( char *buf );
 
