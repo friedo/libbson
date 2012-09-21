@@ -16,18 +16,20 @@ extern void bson_decode( char *buf ) {
   do_decode( buf, 0 );
 }
 
-int extract_int32( char **buf_p ) { 
-  char *buf = ( char *) *buf_p;
-  int value = ( buf[0] | ( buf[1] << 8 | ( buf[2] << 16 ) | ( buf[3] << 24 ) ) );
-  *buf_p += 4;
-  return value;
+/* four bytes, little endian */
+#define extract_int32( buf, value ) \
+  value = ( buf[0] | ( buf[1] <<8 | ( buf[2] << 16 | ( buf[3] << 24 ) ) ) );  \
+  buf += 4;
 
-}
 
 void do_decode( char *buf, int type ) { 
   /* document length, first 4 bytes, little endian */
-  int doc_size = extract_int32( &buf );
-  
+  int doc_size;
+  printf( "buffer head is %p\n", buf );
+  extract_int32( buf, doc_size );
+  printf( "doc size is %d\n", doc_size ); 
+  printf( "buffer head is %p\n", buf ); exit(0);
+
   while ( buf < ( buf + doc_size ) ) { 
     /* element type ID */
     int elem_type = buf[0];
@@ -86,9 +88,9 @@ void do_decode( char *buf, int type ) {
       value = extract_int64( &buf );
       break;
     }
-      
-    */
 
+    */
+      
     if ( type_handlers[ elem_type ] == NULL ) { 
       fprintf( stderr, "libbson: no type handler for BSON type %x\n", elem_type );
       exit(1);
