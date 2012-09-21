@@ -16,10 +16,19 @@ extern void bson_decode( char *buf ) {
   do_decode( buf, 0 );
 }
 
+#define extract_lstring( buf, value ) \
+  int str_len;                        \
+  extract_int32( buf, str_len );      \
+  /* null terminated, so we can just give a pointer to the \
+     beginning of the string. */                           \
+  value = buf;                                             \
+  buf += str_len;
+
 /* four bytes, little endian */
 #define extract_int32( buf, value ) \
   value = ( buf[0] | ( buf[1] <<8 | ( buf[2] << 16 | ( buf[3] << 24 ) ) ) );  \
   buf += 4;
+
 
 
 void do_decode( char *buf, int type ) { 
@@ -28,7 +37,7 @@ void do_decode( char *buf, int type ) {
   printf( "buffer head is %p\n", buf );
   extract_int32( buf, doc_size );
   printf( "doc size is %d\n", doc_size ); 
-  printf( "buffer head is %p\n", buf ); exit(0);
+  printf( "buffer head is %p\n", buf );
 
   while ( buf < ( buf + doc_size ) ) { 
     /* element type ID */
@@ -38,6 +47,9 @@ void do_decode( char *buf, int type ) {
     /* key name, cstring */
     char *key_name = buf;
     buf += strlen(key_name);
+
+    printf( "got key name %s, elem type %x\n", key_name, elem_type );
+    exit(0);
 
     /* if it's a type with a single value, extract it
        and get a pointer */
