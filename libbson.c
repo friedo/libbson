@@ -16,14 +16,13 @@ extern void bson_decode( char *buf ) {
   do_decode( buf, 0 );
 }
 
-#define extract_lstring( buf, value )                       \
-  int str_len;                                              \
-  extract_int32( buf, &str_len );                            \
-  /* null terminated, so we can just give a pointer to the  \
-     beginning of the string. */                            \
-  printf( "lstring size is %i\n", str_len );                \
-  value = buf;                                              \
-  buf += str_len;
+#define extract_lstring( buf, str_struct )                   \
+  extract_int32( buf, &(str_struct.length) );                \
+  /* null terminated, so we can just give a pointer to the   \
+     beginning of the string. */                             \
+  printf( "lstring size is %i\n", str_struct.length );       \
+  str_struct.str = buf;                                      \
+  buf += str_struct.length;
 
 /* four bytes, little endian */
 #define extract_int32( buf, value ) \
@@ -52,9 +51,9 @@ void do_decode( char *buf, int type ) {
     printf( "got key name %s, elem type %x\n", key_name, elem_type );
 
     if ( elem_type == BSON_STRING ) { 
-      char *string;
+      bson_string_t string;
       extract_lstring( buf, string );
-      printf( "\tgot string [%s]\n", string );
+      printf( "\tgot string [%s], length [%d]\n", string.str, string.length );
     } else if ( elem_type == BSON_INT32 ) {
       int int32;
       extract_int32( buf, &int32 );
