@@ -64,3 +64,8 @@ typedef int        bson_timestamp_t;
 typedef int        bson_int64_t;
 
 
+/* for deserialization support */
+typedef union { 
+  double dbl;
+  char bytes[8];
+} _dbl_tmp;

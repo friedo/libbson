@@ -25,10 +25,23 @@ extern void bson_decode( char *buf ) {
   buf += str_struct.length;
 
 /* four bytes, little endian */
-#define extract_int32( buf, value ) \
-  *value = buf[0] | buf[1] <<8 | buf[2] << 16 | buf[3] << 24;  \
+#define extract_int32( buf, value )                               \
+  *value =   buf[0] | buf[1] << 8 | buf[2] << 16 | buf[3] << 24;  \
   buf += 4;
 
+
+#define extract_double( buf, value )                             \
+  _dbl_tmp data;                                                 \
+  data.bytes[0] = buf[0];                                        \
+  data.bytes[1] = buf[1];                                        \
+  data.bytes[2] = buf[2];                                        \
+  data.bytes[3] = buf[3];                                        \
+  data.bytes[4] = buf[4];                                        \
+  data.bytes[5] = buf[5];                                        \
+  data.bytes[6] = buf[6];                                        \
+  data.bytes[7] = buf[7];                                        \
+  *value = data.dbl;                                             \
+  buf += 8;
 
 
 void do_decode( char *buf, int type ) { 
@@ -36,10 +49,12 @@ void do_decode( char *buf, int type ) {
   int doc_size;
   printf( "buffer head is %p\n", buf );
   extract_int32( buf, &doc_size );
-  printf( "doc size is %d\n", doc_size ); 
+  char *buf_end = buf + doc_size;
+  printf( "doc size is %d, end at %p\n", doc_size, buf_end ); 
   printf( "buffer head is %p\n", buf );
 
-  while ( buf < ( buf + doc_size ) ) { 
+  while ( buf < buf_end ) { 
+    printf( "buffer head is %p\n", buf );   
     /* element type ID */
     int elem_type = buf[0];
     buf += 1;
@@ -50,7 +65,11 @@ void do_decode( char *buf, int type ) {
 
     printf( "got key name %s, elem type %x\n", key_name, elem_type );
 
-    if ( elem_type == BSON_STRING ) { 
+    if ( elem_type == BSON_DOUBLE ) { 
+      bson_double_t dbl;
+      extract_double( buf, &dbl );
+      printf( "\tgot float [%f]\n", dbl );
+    } else if ( elem_type == BSON_STRING ) { 
       bson_string_t string;
       extract_lstring( buf, string );
       printf( "\tgot string [%s], length [%d]\n", string.str, string.length );
@@ -58,6 +77,8 @@ void do_decode( char *buf, int type ) {
       int int32;
       extract_int32( buf, &int32 );
       printf( "\tgot int32 [%i]\n", int32 );
+    } else if ( elem_type == 0 ) { 
+      buf++;
     } else { 
       fprintf( stderr, "Can't handle elem type %x\n", elem_type );
       exit(1);
