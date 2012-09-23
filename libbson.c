@@ -16,17 +16,18 @@ extern void bson_decode( char *buf ) {
   do_decode( buf, 0 );
 }
 
-#define extract_lstring( buf, value ) \
-  int str_len;                        \
-  extract_int32( buf, str_len );      \
-  /* null terminated, so we can just give a pointer to the \
-     beginning of the string. */                           \
-  value = buf;                                             \
+#define extract_lstring( buf, value )                       \
+  int str_len;                                              \
+  extract_int32( buf, &str_len );                            \
+  /* null terminated, so we can just give a pointer to the  \
+     beginning of the string. */                            \
+  printf( "lstring size is %i\n", str_len );                \
+  value = buf;                                              \
   buf += str_len;
 
 /* four bytes, little endian */
 #define extract_int32( buf, value ) \
-  value = ( buf[0] | ( buf[1] <<8 | ( buf[2] << 16 | ( buf[3] << 24 ) ) ) );  \
+  *value = buf[0] | buf[1] <<8 | buf[2] << 16 | buf[3] << 24;  \
   buf += 4;
 
 
@@ -35,7 +36,7 @@ void do_decode( char *buf, int type ) {
   /* document length, first 4 bytes, little endian */
   int doc_size;
   printf( "buffer head is %p\n", buf );
-  extract_int32( buf, doc_size );
+  extract_int32( buf, &doc_size );
   printf( "doc size is %d\n", doc_size ); 
   printf( "buffer head is %p\n", buf );
 
@@ -46,68 +47,22 @@ void do_decode( char *buf, int type ) {
 
     /* key name, cstring */
     char *key_name = buf;
-    buf += strlen(key_name);
+    buf += strlen(key_name) + 1;
 
     printf( "got key name %s, elem type %x\n", key_name, elem_type );
-    exit(0);
 
-    /* if it's a type with a single value, extract it
-       and get a pointer */
-    void *value = NULL;
-
-    /*
-    switch( elem_type ) { 
-    case BSON_DOUBLE:
-      value = extract_float( &buf );
-      break;
-    case BSON_STRING:
-      value = extract_lstring( &buf );
-      break;
-    case BSON_BINARY:
-      value = extract_binary( &buf );
-      break;
-    case BSON_OBJECT_ID:
-      value = extract_bytes( &buf, 12 );
-      break;
-    case BSON_BOOLEAN:
-      value = extract_bytes( &buf, 1 );
-      break;
-    case BSON_DATETIME:
-      value = extract_int64( &buf );
-      break;
-    case BSON_REGEXP:
-      value = extract_regexp( &buf );
-      break;
-    case BSON_DB_POINTER:
-      value = extract_bytes( &buf, 12 );
-      break;
-    case BSON_JAVASCRIPT:
-      value = extract_lstring( &buf );
-      break;
-    case BSON_SYMBOL:
-      value = extract_lstring( &buf );
-      break;
-    case BSON_JAVASCRIPT_SCOPE:
-      value = extract_js_scope( &buf );
-      break;
-    case BSON_INT32:
-      value = extract_int32( &buf );
-      break;
-    case BSON_TIMESTAMP:
-      value = extract_int64( &buf );
-      break;
-    case BSON_INT64:
-      value = extract_int64( &buf );
-      break;
-    }
-
-    */
-      
-    if ( type_handlers[ elem_type ] == NULL ) { 
-      fprintf( stderr, "libbson: no type handler for BSON type %x\n", elem_type );
+    if ( elem_type == BSON_STRING ) { 
+      char *string;
+      extract_lstring( buf, string );
+      printf( "\tgot string [%s]\n", string );
+    } else if ( elem_type == BSON_INT32 ) {
+      int int32;
+      extract_int32( buf, &int32 );
+      printf( "\tgot int32 [%i]\n", int32 );
+    } else { 
+      fprintf( stderr, "Can't handle elem type %x\n", elem_type );
       exit(1);
     }
 
-    type_handlers[ elem_type ]( key_name, value );
   }
 }
