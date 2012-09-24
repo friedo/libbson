@@ -34,6 +34,7 @@ typedef struct {
 }                  bson_string_t;
 typedef struct { 
   int length;
+  int subtype;
   char *data;
 }                  bson_binary_t;
 typedef char *     bson_object_id_t;

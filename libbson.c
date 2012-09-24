@@ -43,6 +43,19 @@ extern void bson_decode( char *buf ) {
   *value = data.dbl;                                             \
   buf += 8;
 
+#define extract_binary( buf, bin_struct )                        \
+  extract_int32( buf, &(bin_struct.length) );                    \
+  bin_struct.subtype = (int)buf[0]; buf++;                       \
+  bin_struct.data    = buf;                                      \
+  buf += bin_struct.length;
+
+#define extract_oid( buf, oid )                                  \
+  char[13] object_id;                                            \
+  object_id[13] = '\0';                                          \
+  strncpy( object_id, buf, 12 );                                 \
+  *oid = object_id;                                              \
+  buf += 12;                                                     \
+
 
 void do_decode( char *buf, int type ) { 
   /* document length, first 4 bytes, little endian */
@@ -73,6 +86,18 @@ void do_decode( char *buf, int type ) {
       bson_string_t string;
       extract_lstring( buf, string );
       printf( "\tgot string [%s], length [%d]\n", string.str, string.length );
+    } else if ( elem_type == BSON_BINRARY ) {
+      bson_binary_t bin;
+      extract_binary( buf, bin );
+      char *test = malloc( bin.length + 1 );
+      test[ bin.length + 1 ] = '\0';
+      strncpy( test, bin.data, bin.length );
+      printf( "\tgot length [%d], type [%d], data [%s]\n", bin.length, bin.subtype, test );
+      free( test );
+    } else if ( elem_type == BSON_OBJECT_ID ) { 
+      bson_object_id_t oid;
+      extract_oid( buf, &oid );
+      printf( "\tgot OID 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n", oid );
     } else if ( elem_type == BSON_INT32 ) {
       int int32;
       extract_int32( buf, &int32 );
