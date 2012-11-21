@@ -5,6 +5,12 @@
 #include <string.h>
 #include "libbson.h"
 
+#define CHECK_HANDLER(NAME) \
+if ( type_handlers[ NAME ] == NULL ) { \
+  fprintf( stderr, "libbson: no type handler registered for " #NAME "\n" );   \
+  exit(1); \
+}
+
 int (*type_handlers[255])( char *name, void *value ) = {NULL};
 void do_decode( char *buf, int type );
 
@@ -16,98 +22,128 @@ extern void bson_decode( char *buf ) {
   do_decode( buf, 0 );
 }
 
-#define extract_lstring( buf, str_struct )                   \
-  extract_int32( buf, &(str_struct.length) );                \
-  /* null terminated, so we can just give a pointer to the   \
-     beginning of the string. */                             \
-  printf( "lstring size is %i\n", str_struct.length );       \
-  str_struct.str = buf;                                      \
-  buf += str_struct.length;
+bson_int32_t extract_int32( char *buf ) { 
+  bson_int32_t val = { .value = 0 };
+  /* four bytes, little endian */
+  // printf( "bytes are [%d][%d][%d][%d]\n", (int)buf[0], (int)buf[1], (int)buf[2], (int)buf[3] );
 
-/* four bytes, little endian */
-#define extract_int32( buf, value )                               \
-  *value =   buf[0] | buf[1] << 8 | buf[2] << 16 | buf[3] << 24;  \
-  buf += 4;
+  int i;
+  for( i = 0; i <= 3; i++ ) { 
+    val._bytes[i] = buf[i];
+  }
 
+  return val;
+}
 
-#define extract_double( buf, value )                             \
-  _dbl_tmp data;                                                 \
-  data.bytes[0] = buf[0];                                        \
-  data.bytes[1] = buf[1];                                        \
-  data.bytes[2] = buf[2];                                        \
-  data.bytes[3] = buf[3];                                        \
-  data.bytes[4] = buf[4];                                        \
-  data.bytes[5] = buf[5];                                        \
-  data.bytes[6] = buf[6];                                        \
-  data.bytes[7] = buf[7];                                        \
-  *value = data.dbl;                                             \
-  buf += 8;
+bson_int64_t extract_int64( char *buf ) { 
+  bson_int64_t val = { .value = 0 };
 
-#define extract_binary( buf, bin_struct )                        \
-  extract_int32( buf, &(bin_struct.length) );                    \
-  bin_struct.subtype = (int)buf[0]; buf++;                       \
-  bin_struct.data    = buf;                                      \
-  buf += bin_struct.length;
+  int i;
+  for ( i = 0; i <= 7; i++ ) { 
+    val._bytes[i] = buf[i];
+  }
 
-#define extract_oid( buf, oid )                                  \
-  char[13] object_id;                                            \
-  object_id[13] = '\0';                                          \
-  strncpy( object_id, buf, 12 );                                 \
-  *oid = object_id;                                              \
-  buf += 12;                                                     \
+  return val;
+}
 
+bson_double_t extract_double( char *buf ) { 
+  bson_double_t val = { .value = 0 };
+
+  /* eight bytes, little endian */
+  int i;
+  for( i = 0; i <= 7; i++ ) {
+    val._bytes[i] = buf[i];
+  }
+
+  return val;
+}
+
+bson_string_t extract_string( char *buf ) { 
+  bson_string_t str = { .value = NULL };
+  str.length = extract_int32( buf );
+  str.value = buf + 4;
+  return str;
+}
+
+bson_binary_t extract_binary( char *buf ) { 
+  bson_binary_t blob = { .data = NULL };
+  blob.length  = extract_int32( buf );
+  blob.subtype = buf[4];
+  blob.data    = buf + 5;
+  return blob;
+}
 
 void do_decode( char *buf, int type ) { 
   /* document length, first 4 bytes, little endian */
-  int doc_size;
-  printf( "buffer head is %p\n", buf );
-  extract_int32( buf, &doc_size );
-  char *buf_end = buf + doc_size;
-  printf( "doc size is %d, end at %p\n", doc_size, buf_end ); 
-  printf( "buffer head is %p\n", buf );
+  bson_int32_t doc_size = extract_int32( buf );
+  char *buf_end = buf + doc_size.value;
+
+  /* advance pointer to beginning of data */
+  buf += 4;
 
   while ( buf < buf_end ) { 
-    printf( "buffer head is %p\n", buf );   
-    /* element type ID */
-    int elem_type = buf[0];
-    buf += 1;
+    /* read type byte */
+    char elem_type = buf[0];
+    buf++;
 
-    /* key name, cstring */
-    char *key_name = buf;
-    buf += strlen(key_name) + 1;
-
-    printf( "got key name %s, elem type %x\n", key_name, elem_type );
-
+    char *elem_name = buf;    // null terminated
+    buf += strlen( elem_name ) + 1;
     if ( elem_type == BSON_DOUBLE ) { 
-      bson_double_t dbl;
-      extract_double( buf, &dbl );
-      printf( "\tgot float [%f]\n", dbl );
-    } else if ( elem_type == BSON_STRING ) { 
-      bson_string_t string;
-      extract_lstring( buf, string );
-      printf( "\tgot string [%s], length [%d]\n", string.str, string.length );
-    } else if ( elem_type == BSON_BINRARY ) {
-      bson_binary_t bin;
-      extract_binary( buf, bin );
-      char *test = malloc( bin.length + 1 );
-      test[ bin.length + 1 ] = '\0';
-      strncpy( test, bin.data, bin.length );
-      printf( "\tgot length [%d], type [%d], data [%s]\n", bin.length, bin.subtype, test );
-      free( test );
-    } else if ( elem_type == BSON_OBJECT_ID ) { 
-      bson_object_id_t oid;
-      extract_oid( buf, &oid );
-      printf( "\tgot OID 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n", oid );
-    } else if ( elem_type == BSON_INT32 ) {
-      int int32;
-      extract_int32( buf, &int32 );
-      printf( "\tgot int32 [%i]\n", int32 );
-    } else if ( elem_type == 0 ) { 
-      buf++;
-    } else { 
-      fprintf( stderr, "Can't handle elem type %x\n", elem_type );
-      exit(1);
-    }
+      CHECK_HANDLER(BSON_DOUBLE);
 
+      bson_double_t flt = extract_double( buf );
+      type_handlers[ BSON_DOUBLE ]( elem_name, &flt );
+      buf += 8;
+    } else if ( elem_type == BSON_STRING ) { 
+      CHECK_HANDLER(BSON_STRING);
+
+      bson_string_t str = extract_string( buf );
+      // printf( "string name %s, length %d, value %s\n", elem_name, str.length.value, str.value );
+        
+      type_handlers[ BSON_STRING ]( elem_name, &str );
+      buf += str.length.value + 1;
+    } else if ( elem_type == BSON_DOCUMENT ) { 
+      CHECK_HANDLER(BSON_DOCUMENT);
+      bson_int32_t emb_doc_size = extract_int32( buf );
+      type_handlers[ BSON_DOCUMENT ]( elem_name, &emb_doc_size ); // open new doc
+
+      do_decode( buf, 0 );
+
+      bson_int32_t flag = { .value = 0 };
+      type_handlers[ BSON_DOCUMENT ]( elem_name, &flag ); // close new doc
+      buf += emb_doc_size.value;
+    } else if ( elem_type == BSON_ARRAY ) { 
+      CHECK_HANDLER(BSON_ARRAY);
+      bson_int32_t emb_arr_size = extract_int32( buf );
+      type_handlers[ BSON_ARRAY ]( elem_name, &emb_arr_size ); // open new array
+
+      do_decode( buf, 1 );
+
+      bson_int32_t flag = { .value = 0 };
+      type_handlers[ BSON_ARRAY ]( elem_name, &flag ); // close new array
+      buf += emb_arr_size.value;
+ 
+    } else if ( elem_type == BSON_BINARY ) { 
+      CHECK_HANDLER(BSON_BINARY);
+      
+      bson_binary_t blob = extract_binary( buf );
+      type_handlers[ BSON_BINARY ]( elem_name, &blob );
+      buf += blob.length.value + 5;
+    } else if ( elem_type == BSON_INT32 ) { 
+      CHECK_HANDLER(BSON_INT32);
+
+      bson_int32_t num = extract_int32( buf );
+      type_handlers[ BSON_INT32 ]( elem_name, &num );
+      buf += 4;
+    } else if ( elem_type == BSON_INT64 ) { 
+      CHECK_HANDLER(BSON_INT64);
+
+      bson_int64_t num = extract_int64( buf );
+      type_handlers[ BSON_INT64 ]( elem_name, &num );
+      buf += 8;
+    } else { 
+      //fprintf( stderr, "libbson: unknown type number %d\n", (int)elem_type );
+      //exit(2);
+    }
   }
 }

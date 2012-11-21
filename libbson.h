@@ -4,7 +4,7 @@ const int BSON_DOUBLE            = 0x01;
 const int BSON_STRING            = 0x02;
 const int BSON_DOCUMENT          = 0x03;
 const int BSON_ARRAY             = 0x04;
-const int BSON_BINRARY           = 0x05;
+const int BSON_BINARY            = 0x05;
 const int BSON_UNDEFINED         = 0x06;
 const int BSON_OBJECT_ID         = 0x07;
 const int BSON_BOOLEAN           = 0x08;
@@ -27,42 +27,72 @@ extern void bson_decode( char *buf );
 /* typedefs for bson things. compound elements like 
    documents and arrays, and valueless elements like
    null, undef, and min/max, don't have types. */
-typedef double     bson_double_t;
+typedef union { 
+  double value;
+  char _bytes[8];
+} bson_double_t;
+
+typedef union { 
+  int value;
+  char _bytes[4];
+} bson_int32_t;
+
+typedef union { 
+  int value;
+  char _bytes[8];
+} bson_int64_t;
+
+typedef struct {
+  bson_int32_t length;
+  char *value;
+} bson_string_t;
+
 typedef struct { 
-  int length;
-  char *str;
-}                  bson_string_t;
-typedef struct { 
-  int length;
-  int subtype;
+  bson_int32_t length;
+  char subtype;
   char *data;
-}                  bson_binary_t;
-typedef char *     bson_object_id_t;
-typedef int        bson_bool_t;
-typedef int        bson_datetime_t;
+} bson_binary_t;
+
+typedef struct { 
+  char *value;
+} bson_object_id_t;
+
+typedef struct { 
+  char value;
+} bson_bool_t;
+
+typedef union { 
+  long int value;
+  char _bytes[8];
+} bson_datetime_t;
+
 typedef struct { 
   char *pattern;
   char *flags;
-}                  bson_regexp_t;
+} bson_regexp_t;
+
 typedef struct {     
+  bson_int32_t length;
   char *namespace;
   bson_object_id_t *object_id;
-}                  bson_db_pointer_t;
+} bson_db_pointer_t;
+
 typedef struct {
   int length;
-  char *code;
-}                  bson_js_t;
+  char *value;
+} bson_js_t;
+
 typedef struct { 
   int length;
-  char *sym;
-}                  bson_symbol_t;
+  char *value;
+} bson_symbol_t;
+
 typedef struct { 
   int length;
   char *code;
 }                  bson_js_w_s_t;
-typedef int        bson_int32_t;
+
 typedef int        bson_timestamp_t;
-typedef int        bson_int64_t;
 
 
 /* for deserialization support */
