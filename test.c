@@ -49,6 +49,15 @@ void handle_bson_array( char *name, void *len_ptr ) {
   }
 }
 
+void handle_bson_bool( char *name, void *val_ptr ) { 
+  char *val = (char *)val_ptr;
+
+  if ( *val == 0 ) { 
+    printf( "\"%s\": true\n", name );
+  } else { 
+    printf( "\"%s\": false\n", name );
+  }
+}
 
 void handle_bson_oid( char *name, void *oid_ptr ) { 
   bson_object_id_t *oid = (bson_object_id_t *)oid_ptr;
@@ -73,6 +82,7 @@ int main() {
   bson_register_handler( BSON_DOCUMENT,  handle_bson_document );
   bson_register_handler( BSON_ARRAY,     handle_bson_array );
   bson_register_handler( BSON_OBJECT_ID, handle_bson_oid );
+  bson_register_handler( BSON_BOOLEAN,   handle_bson_bool );
 
   /* read test data */
   long f_size;

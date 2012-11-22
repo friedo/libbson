@@ -157,6 +157,12 @@ void do_decode( char *buf, int type ) {
       bson_object_id_t oid = extract_oid( buf );
       type_handlers[ BSON_OBJECT_ID ]( elem_name, &oid );
       buf += 12;
+    } else if ( elem_type == BSON_BOOLEAN ) { 
+      CHECK_HANDLER(BSON_BOOLEAN);
+      char val = buf[0];
+      type_handlers[ BSON_BOOLEAN ]( elem_name, &val );
+      buf++;
+      
     } else { 
       //fprintf( stderr, "libbson: unknown type number %d\n", (int)elem_type );
       //exit(2);
