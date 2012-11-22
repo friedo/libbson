@@ -49,13 +49,30 @@ void handle_bson_array( char *name, void *len_ptr ) {
   }
 }
 
+
+void handle_bson_oid( char *name, void *oid_ptr ) { 
+  bson_object_id_t *oid = (bson_object_id_t *)oid_ptr;
+
+  printf( "\"%s\": ObjectId(", name );
+
+  int i;
+
+  // is there a better way to do this? :/
+  for ( i = 0; i < 11; i++ ) { 
+    printf( "%02hhx", (int)oid->value[i] );
+  }
+
+  printf( ")\n" );
+}
+
 int main() { 
-  bson_register_handler( BSON_STRING,   handle_bson_string );
-  bson_register_handler( BSON_BINARY,   handle_bson_binary );
-  bson_register_handler( BSON_DOUBLE,   handle_bson_double );
-  bson_register_handler( BSON_INT32,    handle_bson_int32  );
-  bson_register_handler( BSON_DOCUMENT, handle_bson_document );
-  bson_register_handler( BSON_ARRAY,    handle_bson_array );
+  bson_register_handler( BSON_STRING,    handle_bson_string );
+  bson_register_handler( BSON_BINARY,    handle_bson_binary );
+  bson_register_handler( BSON_DOUBLE,    handle_bson_double );
+  bson_register_handler( BSON_INT32,     handle_bson_int32  );
+  bson_register_handler( BSON_DOCUMENT,  handle_bson_document );
+  bson_register_handler( BSON_ARRAY,     handle_bson_array );
+  bson_register_handler( BSON_OBJECT_ID, handle_bson_oid );
 
   /* read test data */
   long f_size;

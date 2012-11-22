@@ -54,7 +54,7 @@ typedef struct {
 } bson_binary_t;
 
 typedef struct { 
-  char *value;
+  char value[12];
 } bson_object_id_t;
 
 typedef struct { 

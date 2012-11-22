@@ -71,6 +71,18 @@ bson_binary_t extract_binary( char *buf ) {
   return blob;
 }
 
+
+bson_object_id_t extract_oid( char *buf ) { 
+  bson_object_id_t oid;
+  
+  int i;
+  for ( i = 0; i <= 11; i++ ) { 
+    oid.value[i] = buf[i];
+  }
+
+  return oid;
+}
+
 void do_decode( char *buf, int type ) { 
   /* document length, first 4 bytes, little endian */
   bson_int32_t doc_size = extract_int32( buf );
@@ -139,6 +151,12 @@ void do_decode( char *buf, int type ) {
       bson_int64_t num = extract_int64( buf );
       type_handlers[ BSON_INT64 ]( elem_name, &num );
       buf += 8;
+    } else if ( elem_type == BSON_OBJECT_ID ) { 
+      CHECK_HANDLER(BSON_OBJECT_ID);
+      
+      bson_object_id_t oid = extract_oid( buf );
+      type_handlers[ BSON_OBJECT_ID ]( elem_name, &oid );
+      buf += 12;
     } else { 
       //fprintf( stderr, "libbson: unknown type number %d\n", (int)elem_type );
       //exit(2);
