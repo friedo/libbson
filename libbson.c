@@ -24,8 +24,6 @@ extern void bson_decode( char *buf ) {
 
 bson_int32_t extract_int32( char *buf ) { 
   bson_int32_t val = { .value = 0 };
-  /* four bytes, little endian */
-  // printf( "bytes are [%d][%d][%d][%d]\n", (int)buf[0], (int)buf[1], (int)buf[2], (int)buf[3] );
 
   int i;
   for( i = 0; i <= 3; i++ ) { 
